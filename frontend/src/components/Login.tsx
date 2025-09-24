@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ChangeEvent, type FormEvent } from "react";
 import { createUser, findUser, type User } from "../api/users";
 
 interface LoginProps {
@@ -10,7 +10,14 @@ export default function Login({ onLogged }: LoginProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleUsernameChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setUsername(event.target.value);
+    if (error) {
+      setError(null);
+    }
+  };
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmed = username.trim();
     if (!trimmed) {
@@ -36,23 +43,40 @@ export default function Login({ onLogged }: LoginProps) {
   };
 
   return (
-    <div className="card">
-      <h2>Entrer dans l'application</h2>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="username">Pseudo</label>
+    <section className="card login-card">
+      <h1>Cours à trous – Apprends et révise efficacement</h1>
+      <p className="login-description">
+        Écris tes cours, transforme-les en texte à trous et révise-les grâce à un
+        système intelligent d'itérations.
+      </p>
+      <form className="login-form" onSubmit={handleSubmit}>
+        <label htmlFor="username">Ton pseudo</label>
         <input
           id="username"
           value={username}
-          onChange={(event) => setUsername(event.target.value)}
-          placeholder="Votre pseudo"
+          onChange={handleUsernameChange}
+          placeholder="Entre ton pseudo"
+          autoComplete="off"
+          autoFocus
         />
-        <div style={{ marginTop: "16px" }}>
+        <div className="login-actions">
           <button className="btn btn-primary" type="submit" disabled={loading}>
             {loading ? "Connexion..." : "Entrer"}
           </button>
         </div>
-        {error && <div className="status-bar alert-error">{error}</div>}
+        {error && (
+          <div
+            className="status-bar alert-error login-error"
+            role="alert"
+            aria-live="assertive"
+          >
+            {error}
+          </div>
+        )}
       </form>
-    </div>
+      <p className="login-helper">
+        Pas besoin de mot de passe – tout est basé sur ton pseudo.
+      </p>
+    </section>
   );
 }

@@ -81,39 +81,54 @@ export default function App() {
   };
 
   const isLogged = Boolean(user);
-  const showCourse = isLogged && currentCourse;
+  const hasActiveCourse = Boolean(isLogged && currentCourse);
+
+  let content: JSX.Element | null = null;
+
+  if (!isLogged) {
+    content = <Login onLogged={handleLogin} />;
+  } else if (!hasActiveCourse) {
+    content = (
+      <Dashboard
+        userId={user!.id}
+        onOpenCourse={handleOpenCourse}
+        refreshKey={refreshCourses}
+      />
+    );
+  } else if (mode === "edit") {
+    content = (
+      <Editor courseId={currentCourse!.id} onCourseLoaded={handleCourseTitle} />
+    );
+  } else {
+    content = (
+      <Review
+        courseId={currentCourse!.id}
+        userId={user!.id}
+        refreshKey={refreshHoles}
+        onCourseLoaded={handleCourseTitle}
+      />
+    );
+  }
 
   return (
     <div className="app-container">
-      <Header
-        user={user}
-        courseTitle={currentCourse?.title}
-        showCourseActions={Boolean(showCourse)}
-        mode={mode}
-        onModeChange={setMode}
-        onBack={showCourse ? handleBackToDashboard : undefined}
-        onAdvanceIteration={showCourse ? handleAdvanceIteration : undefined}
-        iterationLoading={iterationLoading}
-      />
-      {!isLogged && <Login onLogged={handleLogin} />}
-      {isLogged && !showCourse && (
-        <Dashboard
-          userId={user!.id}
-          onOpenCourse={handleOpenCourse}
-          refreshKey={refreshCourses}
+      {isLogged && (
+        <Header
+          user={user}
+          courseTitle={currentCourse?.title}
+          showCourseActions={hasActiveCourse}
+          mode={mode}
+          onModeChange={setMode}
+          onBack={hasActiveCourse ? handleBackToDashboard : undefined}
+          onAdvanceIteration={
+            hasActiveCourse ? handleAdvanceIteration : undefined
+          }
+          iterationLoading={iterationLoading}
         />
       )}
-      {isLogged && showCourse && mode === "edit" && (
-        <Editor courseId={currentCourse!.id} onCourseLoaded={handleCourseTitle} />
-      )}
-      {isLogged && showCourse && mode === "review" && (
-        <Review
-          courseId={currentCourse!.id}
-          userId={user!.id}
-          refreshKey={refreshHoles}
-          onCourseLoaded={handleCourseTitle}
-        />
-      )}
+      <main className={isLogged ? "main-content" : "landing-content"}>
+        {content}
+      </main>
       {iterationMessage && (
         <div
           className={`status-bar ${
