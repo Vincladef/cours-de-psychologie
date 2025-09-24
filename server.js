@@ -1,25 +1,11 @@
 const express = require("express");
+const cors = require("cors");
 const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 
 const app = express();
 
-// Minimal CORS support (equivalent to using the cors() middleware)
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  const requestHeaders = req.header("Access-Control-Request-Headers");
-  const allowedHeaders = ["Content-Type", "Authorization", "X-Requested-With"];
-  if (requestHeaders) {
-    allowedHeaders.push(requestHeaders);
-  }
-  res.header("Access-Control-Allow-Headers", allowedHeaders.join(","));
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
+app.use(cors());
 app.use(express.json());
 
 const dbPath = process.env.DB_PATH || path.resolve(__dirname, "database.sqlite");
@@ -286,15 +272,11 @@ app.post("/courses/:courseId/sync-holes", async (req, res) => {
     (h) => h && typeof h.id === "string" && typeof h.text === "string"
   );
 
-  const holeIds = validHoles.map((h) => h.id);
-
   try {
     const course = await get(`SELECT id FROM courses WHERE id = ?`, [courseId]);
     if (!course) {
       return res.status(404).json({ error: "Cours introuvable." });
     }
-
-    await run("BEGIN TRANSACTION");
 
     for (const hole of validHoles) {
       await run(
@@ -304,38 +286,8 @@ app.post("/courses/:courseId/sync-holes", async (req, res) => {
       );
     }
 
-    let removedHoles = 0;
-    let removedStates = 0;
-    if (holeIds.length > 0) {
-      const placeholders = holeIds.map(() => "?").join(", ");
-      const params = [courseId, ...holeIds];
-      const stateResult = await run(
-        `DELETE FROM hole_states
-         WHERE hole_id IN (
-           SELECT id FROM holes WHERE course_id = ? AND id NOT IN (${placeholders})
-         )`,
-        params
-      );
-      const holeResult = await run(
-        `DELETE FROM holes WHERE course_id = ? AND id NOT IN (${placeholders})`,
-        params
-      );
-      removedHoles = holeResult.changes || 0;
-      removedStates = stateResult.changes || 0;
-    } else {
-      const stateResult = await run(
-        `DELETE FROM hole_states WHERE hole_id IN (SELECT id FROM holes WHERE course_id = ?)`,
-        [courseId]
-      );
-      const holeResult = await run(`DELETE FROM holes WHERE course_id = ?`, [courseId]);
-      removedHoles = holeResult.changes || 0;
-      removedStates = stateResult.changes || 0;
-    }
-
-    await run("COMMIT");
-    res.json({ synced: validHoles.length, removedHoles, removedStates });
+    res.json({ synced: validHoles.length });
   } catch (err) {
-    await run("ROLLBACK").catch(() => {});
     res.status(500).json({ error: "Erreur interne." });
   }
 });
